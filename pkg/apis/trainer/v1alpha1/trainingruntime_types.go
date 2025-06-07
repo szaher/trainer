@@ -168,6 +168,9 @@ type MLPolicySource struct {
 
 	// Configuration for the MPI Runtime.
 	MPI *MPIMLPolicySource `json:"mpi,omitempty"`
+
+	// Configuration for the Ray runtime.
+	Ray *RayMLPolicySource `json:"ray,omitempty"`
 }
 
 // TorchMLPolicySource represents a PyTorch runtime configuration.
@@ -230,6 +233,14 @@ type MPIMLPolicySource struct {
 	// Defaults to false.
 	// +kubebuilder:default=false
 	RunLauncherAsNode *bool `json:"runLauncherAsNode,omitempty"`
+}
+
+// RayMLPolicySource represents a Ray runtime configuration.
+type RayMLPolicySource struct {
+	// Number of worker nodes in the RayCluster.
+	// Defaults to 1.
+	// +kubebuilder:default=1
+	NumWorkers *int32 `json:"numWorkers,omitempty"`
 }
 
 // MPIImplementation represents one of the supported MPI implementations.

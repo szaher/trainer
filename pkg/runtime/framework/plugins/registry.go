@@ -26,6 +26,7 @@ import (
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/jobset"
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/mpi"
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/plainml"
+	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/ray"
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/torch"
 )
 
@@ -35,6 +36,7 @@ func NewRegistry() Registry {
 	return Registry{
 		coscheduling.Name: coscheduling.New,
 		mpi.Name:          mpi.New,
+		ray.Name:          ray.New,
 		plainml.Name:      plainml.New,
 		torch.Name:        torch.New,
 		jobset.Name:       jobset.New,
