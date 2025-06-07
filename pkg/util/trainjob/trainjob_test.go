@@ -48,7 +48,7 @@ func TestRuntimeRefIsTrainingRuntime(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := RuntimeRefIsTrainingRuntime(tc.ref)
 			if got != tc.want {
-				t.Errorf("Unexpected RuntimeRefIsTrainingRuntime()\nwant: %v\n, want: %v", got, tc.want)
+				t.Errorf("Unexpected RuntimeRefIsTrainingRuntime()\nwant: %v\n got: %v", tc.want, got)
 			}
 		})
 	}
@@ -78,7 +78,7 @@ func TestRuntimeRefIsClusterTrainingRuntime(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := RuntimeRefIsClusterTrainingRuntime(tc.ref)
 			if got != tc.want {
-				t.Errorf("Unexpected RuntimeRefIsClusterTrainingRuntime()\nwant: %v\n, want: %v", got, tc.want)
+				t.Errorf("Unexpected RuntimeRefIsClusterTrainingRuntime()\nwant: %v\n got: %v", tc.want, got)
 			}
 		})
 	}
