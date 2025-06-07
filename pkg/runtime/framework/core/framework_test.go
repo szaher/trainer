@@ -50,6 +50,7 @@ import (
 	jobsetplgconsts "github.com/kubeflow/trainer/pkg/runtime/framework/plugins/jobset/constants"
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/mpi"
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/plainml"
+	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/ray"
 	"github.com/kubeflow/trainer/pkg/runtime/framework/plugins/torch"
 	testingutil "github.com/kubeflow/trainer/pkg/util/testing"
 )
@@ -76,6 +77,7 @@ func TestNew(t *testing.T) {
 					plainml.Name:      &plainml.PlainML{},
 					torch.Name:        &torch.Torch{},
 					jobset.Name:       &jobset.JobSet{},
+					ray.Name:          &ray.Ray{},
 				},
 				enforceMLPlugins: []framework.EnforceMLPolicyPlugin{
 					&mpi.MPI{},
@@ -102,6 +104,7 @@ func TestNew(t *testing.T) {
 					&coscheduling.CoScheduling{},
 					&jobset.JobSet{},
 					&mpi.MPI{},
+					&ray.Ray{},
 				},
 				terminalConditionPlugins: []framework.TerminalConditionPlugin{
 					&jobset.JobSet{},

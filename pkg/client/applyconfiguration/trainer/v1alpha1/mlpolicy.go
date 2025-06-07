@@ -52,3 +52,10 @@ func (b *MLPolicyApplyConfiguration) WithMPI(value *MPIMLPolicySourceApplyConfig
 	b.MLPolicySourceApplyConfiguration.MPI = value
 	return b
 }
+
+// WithRay sets the Ray field in the declarative configuration to the given value
+// and returns the receiver.
+func (b *MLPolicyApplyConfiguration) WithRay(value *RayMLPolicySourceApplyConfiguration) *MLPolicyApplyConfiguration {
+	b.MLPolicySourceApplyConfiguration.Ray = value
+	return b
+}
