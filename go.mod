@@ -8,7 +8,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/open-policy-agent/cert-controller v0.12.0
-	github.com/ray-project/kuberay/ray-operator v1.3.2
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.36.0
 	k8s.io/api v0.32.2

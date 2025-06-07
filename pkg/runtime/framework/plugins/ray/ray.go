@@ -2,19 +2,20 @@ package ray
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	rayv1 "github.com/ray-project/kuberay/ray-operator/apis/ray/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	batchv1ac "k8s.io/client-go/applyconfigurations/batch/v1"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	jobsetv1alpha2ac "sigs.k8s.io/jobset/client-go/applyconfiguration/jobset/v1alpha2"
 
 	trainer "github.com/kubeflow/trainer/pkg/apis/trainer/v1alpha1"
 	"github.com/kubeflow/trainer/pkg/runtime"
 	"github.com/kubeflow/trainer/pkg/runtime/framework"
 )
 
-// Ray implements a simple component builder plugin that creates a RayCluster and RayJob.
 type Ray struct{}
 
 var _ framework.ComponentBuilderPlugin = (*Ray)(nil)
@@ -32,66 +33,90 @@ func (r *Ray) Build(ctx context.Context, info *runtime.Info, trainJob *trainer.T
 		return nil, nil
 	}
 
-	var workers int32
+	workers := int32(1)
 	if info.RuntimePolicy.MLPolicySource.Ray.NumWorkers != nil {
 		workers = *info.RuntimePolicy.MLPolicySource.Ray.NumWorkers
 	}
 
-	clusterName := trainJob.Name + "-ray"
-	cluster := &rayv1.RayCluster{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: rayv1.GroupVersion.String(),
-			Kind:       "RayCluster",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName,
-			Namespace: trainJob.Namespace,
-		},
-		Spec: rayv1.RayClusterSpec{
-			HeadGroupSpec: rayv1.HeadGroupSpec{
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{{
-							Name:  "ray-head",
-							Image: "rayproject/ray:latest",
-						}},
-					},
-				},
-			},
-			WorkerGroupSpecs: []rayv1.WorkerGroupSpec{{
-				GroupName: "ray-worker",
-				Replicas:  &workers,
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{{
-							Name:  "ray-worker",
-							Image: "rayproject/ray:latest",
-						}},
-					},
-				},
-			}},
-		},
-	}
+	headJob := jobsetv1alpha2ac.ReplicatedJob().
+		WithName("head").
+		WithReplicas(1).
+		WithTemplate(batchv1ac.JobTemplateSpec().
+			WithSpec(batchv1ac.JobSpec().
+				WithTemplate(corev1ac.PodTemplateSpec().
+					WithSpec(corev1ac.PodSpec().
+						WithRestartPolicy("OnFailure").
+						WithContainers(
+							corev1ac.Container().
+								WithName("ray-head").
+								WithImage("rayproject/ray:latest").
+								WithCommand("/bin/bash", "-c").
+								WithArgs("ray start --head --port=6379 --dashboard-host=0.0.0.0 && tail -f /dev/null"),
+						),
+					),
+				),
+			),
+		)
+
+	workerJob := jobsetv1alpha2ac.ReplicatedJob().
+		WithName("worker").
+		WithReplicas(workers).
+		WithTemplate(batchv1ac.JobTemplateSpec().
+			WithSpec(batchv1ac.JobSpec().
+				WithTemplate(corev1ac.PodTemplateSpec().
+					WithSpec(corev1ac.PodSpec().
+						WithRestartPolicy("OnFailure").
+						WithContainers(
+							corev1ac.Container().
+								WithName("ray-worker").
+								WithImage("rayproject/ray:latest").
+								WithCommand("/bin/bash", "-c").
+								WithArgs("ray start --address=head-0:6379 --block"),
+						),
+					),
+				),
+			),
+		)
+
+	jobSet := jobsetv1alpha2ac.JobSet(trainJob.Name, trainJob.Namespace).
+		WithSpec(jobsetv1alpha2ac.JobSetSpec().
+			WithNetwork(jobsetv1alpha2ac.Network().WithPublishNotReadyAddresses(true)).
+			WithReplicatedJobs(headJob, workerJob),
+		).
+		WithOwnerReferences(metav1ac.OwnerReference().
+			WithAPIVersion(trainer.GroupVersion.String()).
+			WithKind(trainer.TrainJobKind).
+			WithName(trainJob.Name).
+			WithUID(trainJob.UID).
+			WithController(true).
+			WithBlockOwnerDeletion(true))
 
 	entrypoint := strings.Join(trainJob.Spec.Trainer.Command, " ")
 	if len(trainJob.Spec.Trainer.Args) > 0 {
 		entrypoint = entrypoint + " " + strings.Join(trainJob.Spec.Trainer.Args, " ")
 	}
 
-	job := &rayv1.RayJob{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: rayv1.GroupVersion.String(),
-			Kind:       "RayJob",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      trainJob.Name,
-			Namespace: trainJob.Namespace,
-		},
-		Spec: rayv1.RayJobSpec{
-			RayClusterSpec: &cluster.Spec,
-			Entrypoint:     entrypoint,
-		},
-	}
+	submit := batchv1ac.Job(trainJob.Name+"-ray-submit", trainJob.Namespace).
+		WithSpec(batchv1ac.JobSpec().
+			WithTemplate(corev1ac.PodTemplateSpec().
+				WithSpec(corev1ac.PodSpec().
+					WithRestartPolicy("OnFailure").
+					WithContainers(corev1ac.Container().
+						WithName("submit").
+						WithImage("rayproject/ray:latest").
+						WithCommand("/bin/bash", "-c").
+						WithArgs(fmt.Sprintf("ray job submit --address http://head-0:8265 '%s'", entrypoint)),
+					),
+				),
+			),
+		).
+		WithOwnerReferences(metav1ac.OwnerReference().
+			WithAPIVersion(trainer.GroupVersion.String()).
+			WithKind(trainer.TrainJobKind).
+			WithName(trainJob.Name).
+			WithUID(trainJob.UID).
+			WithController(true).
+			WithBlockOwnerDeletion(true))
 
-	return []any{cluster, job}, nil
+	return []any{jobSet, submit}, nil
 }
