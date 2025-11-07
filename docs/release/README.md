@@ -107,6 +107,8 @@ cherry pick your changes from the `master` branch and submit a PR.
 
    - [manager](../../manifests/overlays/manager/kustomization.yaml)
    - [runtimes](../../manifests/overlays/runtimes/kustomization.yaml)
+   - [data-cache](../../manifests/overlays/data-cache/kustomization.yaml)
+   - `CACHE_IMAGE` in [the torch-distributed-with-cache runtime](../../manifests/base/runtimes/data-cache/torch_distributed_with_cache.yaml)
 
    The image tags must be equal to the release version, for example: `newTag: v2.0.0-rc.1`
 
@@ -144,7 +146,9 @@ registry. In case of failure, manually restart the GitHub actions.
 For example, you can see the
 [completed GitHub actions on the `v2.0.0-rc.1` release](https://github.com/kubeflow/trainer/commit/7122fc1a0f02e3d97b1da2a8eb31148e10b286c9)
 
-### Update the changelog
+### Update the Master Branch
+
+Create the PR in the master branch with the following changes:
 
 1. Update the changelog by running:
 
@@ -163,7 +167,10 @@ For example, you can see the
 
    Check this example: [v2.0.0-rc.0](https://github.com/kubeflow/trainer/blob/master/CHANGELOG.md#v200-rc0-2025-06-10)
 
-   Finally, submit a PR with the updated changelog.
+1. Bump the `API_VERSION` in [the `gen-api.sh` file](../../hack/python-api/gen-api.sh) and the
+   `version` in [the Helm charts](../../charts/kubeflow-trainer/Chart.yaml) to the latest release.
+
+Finally, submit a PR with the updated files.
 
 ### Create GitHub Release
 
